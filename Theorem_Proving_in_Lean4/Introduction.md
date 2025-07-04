@@ -6,7 +6,7 @@
 
 **lean** 基于一个叫做 “带有归纳类型的构造演算” （又称为 **Calculus of Inductive Constructions CIC**）的系统版本，不仅可以定义数学对象并在依赖类型论中表达数学断言，还可用作编写证明的语言。
 >
-> **构造演算（Calculus of Constructions, CoC）**：一套强大且严谨的数学和逻辑形式化系统，用来精确地、无歧义的=地描述数学定义、定理和证明。
+> **构造演算（Calculus of Constructions, CoC）**：一套强大且严谨的数学和逻辑形式化系统，用来精确地、无歧义地描述数学定义、定理和证明。
 > 
 >  其核心思想为：“证明即程序，命题即类型”（Proofs as Programs, Proposition as Types），又称为柯里-霍华德同构（Curry-Howard Correspondence）
 >

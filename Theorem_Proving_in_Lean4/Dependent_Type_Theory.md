@@ -73,6 +73,60 @@ def F.{u} (α : Type u) : Type u := Prod α α
 > F.{u} (α : Type u) : Type u
 ```
 
+## 2.3 Function Abstraction and Evaluation
+
+Lean 提供 fun（或 λ）关键字，用于从表达式创建匿名函数（def 创建有名称的函数）
+
+从另一个表达式创建一个函数是一个称为 lambda abstraction 的过程。
+
+``` lean
+#check fun x : Nat => fun y : Bool => if not y then x + 1 else x + 2
+| fun x y => if (!y) = true then x + 1 else x + 2 : Nat → Bool → Nat
+#check fun (x : Nat) (y : Bool) => if not y then x + 1 else x + 2
+| fun x y => if (!y) = true then x + 1 else x + 2 : Nat → Bool → Nat
+#check fun x y => if not y then x + 1 else x + 2
+| fun x y => if (!y) = true then x + 1 else x + 2 : Nat → Bool → Nat
+```
+
+上述三种写法等价，更推荐第二种写法，第一种明确写出来柯里化过程。
+
+## 2.4 Definitions
+
+
+
+
+## 2.5 Local Definitions
+
+
+
+
+## 2.6 Variabless and Sections
+
+
+
+
+## 2.7 Namespaces
+
+
+
+
+
+
+
+
+## 2.8 What makes dependent type theory dependnet ?
+
+
+
+
+
+
+## 2.9 Implicit Arguments
+
+
+
+
+
 
 
 

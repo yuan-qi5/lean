@@ -168,47 +168,135 @@ def foo := let a := Nat; fun x : a => x + 2
 ```
 ## 2.6 Variabless and Sections
 
+Lean 提供 variable 命令变量类型来使函数声明更紧凑。
 
+``` lean
+def compose (α β γ : Type) (g : β → γ) (f : α → β) (x : α) : γ :=
+  g (f x)
 
+variable (α β γ : Type)
+def compose (g : β → γ) (f : α → β) (x : α) : γ :=
+  g (f x) 
+```
+
+可以声明任何类型的变量，而不仅是 Type 本身。variable 命令指示 Lean 讲已声明的变量作为绑定变量插入到通过名称引用他们的定义中。
+
+``` lean
+variable (α β γ : Type)
+variable (g : β → γ) (f : α → β) (h : α → α)
+variable (x : α)
+
+def compose := g (f x)
+```
+
+可通过 **section** 限制变量的作用域，当 section 部分关闭，变量会超出作用域，从而无法被引用。但函数会被打包创建出去。
+``` lean
+section useful
+  variable (α β γ : Type)
+  variable (g : β → γ) (f : α → β) (h : α → α)
+  variable (x : α)
+
+  def compose := g (f x)
+  def doTwice := h (h x)
+  def doThrice := h (h (h x))
+end useful
+```
+
+若不需要命名，可以使用匿名的 **section**/**end** 对。
 
 ## 2.7 Namespaces
 
+Lean 提供了讲定义分组到嵌套的、分层的命名空间中的能力。
 
+```  lean
+namespace Foo
+  ...
+end Foo
+....
+open Foo
+``` 
+在声明为 `Foo` 的命名空间中工作时，所声明的每一个标识符（identifier）都会带有 "Foo." 前缀的全名。在命名空间内部可以使用短名称来引用，但命名空间结束后，必须带上 `Foo.` 前缀引用。
 
+`open` 命令打开命名空间，从而将较短的名称引入当前上下文，不需加前缀访问。
 
+和 section 一样，嵌套的 namespaces 必须按照他们被打开的顺序关闭。
 
-
+`namespace` 和 `section` 服务于不同目的，`namespace` 用来组织数据，而 `section` 用来为定义声明临时的变量。 `section` 对于界定像 `set_option` 和 `open` 这样命令的作用域也很有用。
+> `set_option` 用来配置和调整 Lean 环境的行为，特别是代码的显示方式。（Pretty Printing）  `set_option <选项名称> <值>`
+> 
 
 
 ## 2.8 What makes dependent type theory dependnet ?
 
+简单的解释是类型可以依赖于参数。
 
+“依赖” 函数类型（Dependent Function Type）：函数的返回值的类型，可以依赖于输入的具体值而变化。            
+即：`(a : α) → β a` （称为依赖函数类型或依赖箭头类型）β 是关于 α 的一个类型家族。
 
+当 β 不依赖于 a 时， α → β 只是 (a : α) → β 的表示方式。
 
+**依赖笛卡尔积类型** `(a : α) × β a` 以同样的方式泛化了笛卡尔积 `α × β`。依赖积也称为 sigma 类型，可以写成 `a : α, β a ` 或使用 `⟨a, b⟩` 或 `Sigma.mk a b` 来创建一个依赖对。字符 `⟨` 和 `⟩` 可以分别用 `\langle` 和 `\rangle` 或 `\<` 和 `\>` 来输入。   
 
+Example:
+``` lean
+universe u v
+
+def f (α : Type u) (β : α → Type v) (a : α) (b : β a) : (a : α) × β a :=
+  ⟨a, b⟩
+
+def g (α : Type u) (β : α → Type v) (a : α) (b : β a) : Σ a : α, β a :=
+  Sigma.mk a b
+```
 
 ## 2.9 Implicit Arguments
 
+依赖类型理论核心特征：项携带大量信息，且其中一些信息可以从上下文中推断出来。在 Lean 中，人们使用下划线 `_` 来指定系统应自动填充信息，这被称为 “隐式参数”
 
+但输入所有下划线仍然很繁琐，Lean 允许你在定义函数时，将那些可以被推断的参数用花括号 `{}` 括起来，而不是圆括号 `()`。被花括号括起来的参数成了 **隐式参数**
 
+``` lean
+universe u
+def ident {α : Type u} (x : α) := x
 
+#check (ident)
+> ident : ?m.22 → ?m.22
+```
+`#check (ident)` 检查 ident 的类型，`#check ident` 返回 ident 的函数签名。
+> `?m22` : `?` 代表这是个 “未知数”，`m` 代表这是个 “元变量”，`.22` 是 Lean 内部给这个空格子的唯一编号，以防和别的空格子混淆。
 
+``` lean
+#check @ident
+@ident : {α : Type u_1} → α → α
+```
+这里的 @ 作用是：临时禁用某个函数的隐式参数机制，将它的所有参数（包括用 `{}` 定义的隐式参数）都变为显示参数。
 
+当变量使用 **variable** 命令声明时，也可指定为隐式：
+``` lean
+universe u
 
+section
+  variable { α : Type u}  -- 声明时指定以后自动把 `α` 当作一个隐式参数
+  variable ( x : α )
+  def ident := x
+end
+```
 
+Lean 拥有复杂的机制去实例化隐式参数，它们可被用来推断函数类型、为此，甚至是证明。在项（term）中实例化这些 “空洞” 或 “占位符” 的过程，常被称为 **阐释（elaboration）**。隐式参数的存在意味着，有时可能没有足够的信息来精确地固定一个表达式的含义。
 
+List.nil 是多态常量不是函数，一个多态常量是一个单一的、固定的值，但它具体类型可以根据上下文动态变化。
 
+在 Lean 中，数字是重载的，但当数字的类型无法推断时，Lean 默认假设它是自然数。
+> 重载：让同一个符号或名字，根据上下文的不同，拥有多种不同的含义和功能。
+```
+#check 2
+> 2 : Nat
+#check (2 : Nat)
+> 2 : Nat
+#check (2 : Int)
+> 2 : Int
+```
 
-
-
-
-
-
-
-
-
-
-
+有时我们已经将某个函数的参数声明为隐式，但现在想要显示地提供该参数。若 foo 是这样的函数，则 @foo 表示具有所有参数都显式地相同函数。
 
 
 

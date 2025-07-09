@@ -26,9 +26,67 @@ Lean 中可将 Proof p 和 p 本身等同来避免重复编写项 Proof。即每
 
 ## 3.2 Working with Propositions as Types
 
+在 “命题即类型” 的范式中，只涉及到 `→`（蕴含）的定理，可使用 lambda 抽象和应用来证明。在 Lean 中，`theorem` 命令用来引入一个新定理。 
+
+> `set_option linter.unusedVaribales false` 作用为关闭 Lean 环境中 “未使用的变量” 这条代码检查规则。
+>
+> linter : 代码检查器，静态分析源代码，找出潜在的错误、不规范的写法、或者可疑的代码。
+
+`theorem` 命令实际是 `def` 命令的一个版本：在 “命题即类型” 的对应关系下，证明定理 `p → q → p` 与定义其关联类型的一个元素是完全相同的。对于 Lean 内核类型检查其而言，这两者无任何区别。
+
+此外，在一个定义的**函数体**中被引用的 `section` 变量，会被自动添加为该定义的参数；但是，只有在一个定理的类型中被引用的变量，才会被添加为该定理的参数。因为一个陈述被证明的方式，不应该影响那个正在被证明的陈述本身。
+
+#print 是 Lean 中探查命令（introspection command），主要作用是显示一个给定标识符（如一个定理、一个定义、一个类型等）的完整定义或声明。
+> 
+> #print 显示定义，返回完整的定义代码
+>
+> #check 检查类型，返回类型
+
+``` lean
+variable {p : Prop}
+variable {q : Prop}
+
+theorem t1 : p → q → p := fun hp : p => fun hq : q => hp
+theorem t1 : p → q → p :=
+  fun hp : p =>
+  fun hq : q =>
+  show p from hp
+```
+`show` 的作用是在证明的一个特定位置，明确地声明当前要证明的目标是什么，然后再提供这个目标的证明。
+- 通用语法：`show <目标类型> from <该目标的证明>`
+- 
+- 注意：`show` 命令出来标注类型外别无他用，内部 t1 上述两种表示方式都产生相同的项。但添加这些额外信息可提高证明的清晰度，并在书写证明时帮助检测错误。
 
 
+和普通定义一样，可将 lambda 抽象的变量移到冒号的左边：   
+`theorem t1 (hp : p) (hq : q) : p := hp`               
+从 lambda 抽象风格改为函数风格。
 
+可以将定理当成一个函数用：
+``` lean
+theorem t1 (hp : p) (hq : q) : p := hp
+
+axiom hp : p   -- 等于声明 p 为真
+
+theorem t2 : q → p := t1 hp
+```
+
+`axiom` 允许向 Lean 的环境中添加一个**断言为真、但没有提供构造性证明**的命题。
+- 语法： `axiom <公理的名字> : <命题>`
+- 注意： `axiom` 风险在于会破坏系统的可靠性。Lean 的核心经过精心设计，保证了只要不使用 `axiom`，就不可能在系统中证明出矛盾。
+
+> 健全（unsound）: 在逻辑学中，一个形式系统被称为是健全的（sound），如果它保证系统内所有能够被证明的命题都是真的。
+
+```lean
+theorem t1 : ∀ {p q : Prop}, p → q → p :=
+  fun {p q : Prop} (hp : p) (hq : q) => hp
+
+variable {p q : Prop}
+theorem t1 : p → q → p := fun (hp : p) (hq : q) => hp
+```
+上下两种写法等价，尽管 p 和 q 已被声明为变量，Lean 会自动对其进行泛化。
+
+注意，对于假设，经常使用 Unicode 下标很有用，在 vscode 中下表通过 `\` + 数字来输入 ： `h\1` → `h₁`
 
 ## 3.3 Propositional Logic
 

@@ -90,13 +90,52 @@ theorem t1 : p → q → p := fun (hp : p) (hq : q) => hp
 
 ## 3.3 Propositional Logic
 
+Lean 定义了所有标准逻辑连接词和符号，命题连接词的符号如下：
+
+![notation_of_propositional_connectives](./pictures/notation_of_propositional_connectives.png)
+
+这些逻辑联结词，无论输入（参数）还是输出（结果），都属于 `Prop` 类型。
+
+运算顺序是：
+` 一元否定 ¬ 结合力最强，其次是 ∧ ，然后是 ∨ ，接着是 → ，最后是 ↔ 。`
+
+lambda 抽象可看作是 `→` 的一个 “**引入规则**”。在命题逻辑设定下，它展示了如何 “引入” 或建立一个蕴含。函数应用可看作是一个 “**消除规则**”，它展示了如何在证明中 “消除” 或使用一个蕴含。
+
+什么是引入规则和消除规则？
+
+- 引入规则（Introduction Rule）：指的是如何构建或 “引入” 一个包含该联结词的更复杂的命题，对 `→` 来说，如何得到一个 `A → B` 的命题？
+
+- 消除规则（Elimination Rule）：指的是如何使用一个包含该联结词的命题来推导出更简单的信息，对 `→` 来说，已有 `A → B`，能用来干什么？
+
+其他命题联结词在 Lean 库中定义好了，并且会被自动导入，每一种联结词都带有其典型的引入和消除规则。
+
+### 3.3.1 Conjunction 合取 
+
+`And.intro` ：合取 `∧` 的引入规则。`And.intro : p → q → p ∧ q`
+
+`example` 命令陈述一个定理，但不会为其命名或将其存储在永久的上下文中。本质上，它只是检查给定的项是否具有指定的类型。但它用于举例说明很方便。
+
+> 注：`theorem` 会定义一个有名的、可以被永久存储和后续引用的定理。
+
+表达式 `And.left h` 从一个 `h : p ∧ q` 的证明中创建一个 `p` 的证明。类似地，`And.right h` 是一个 `q` 的证明，通常称为左、右合取消除规则（and-elimination）。
+
+注意：
+
+- 合取引入（add-introduction）和合取消除（and-elimination），类似于笛卡尔积的配对（pairing）与投影（projection）操作。
+
+- 区别在于，给定 `hp : p` 和 `hq : q`，`And.intro hp hq` 的类型是 `p ∧ q : Prop`；而给定 `a : α` 和 `b : β`，`Prod.mk a b` 的类型是 `α × β : Type`。`Prod` 不能用于 `Prop`，而 `And` 也不能用于 `Type`。
+
+- `∧` 和 `×` 之间的相似性是柯里-霍华德同构的另一个实例，但与蕴含和函数空间构造器不同，`∧` 和 `×` 在 lean 中被分开处理。
+
+### 3.3.2 
 
 
 
+### 3.3.3
 
 
 
-
+### 3.3.4
 
 
 ## 3.4 Introducing Auxiliary Subgoals
@@ -109,5 +148,5 @@ theorem t1 : p → q → p := fun (hp : p) (hq : q) => hp
 
 
 
-
+ 
 

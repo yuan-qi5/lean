@@ -40,7 +40,7 @@ Lean 中多个箭头会从右向左进行组合，Lean 中绝大多数多参数�
 
 **#eval** 命令要求 Lean 计算给定表达式的值。
 
-通过输入 `\to` 、`\r`、`\->` 来输入 Unicode 箭头 `→`，笛卡尔积的 Unicode 符号 × 通过输入 `\times` 来表示，小写希腊字母如 α 、β 和 γ 可用 `\a`、`\b` 和 `\g` 来表示。
+通过输入 `\to` 、`\r`、`\->` 来输入 Unicode 箭头 `→`，笛卡尔积的 Unicode 符号 `×` 通过输入 `\times` 来表示，小写希腊字母如 α 、β 和 γ 可用 `\a`、`\b` 和 `\g` 来表示。
 
 函数 f 应用于值 x 表示为 f x，书写类型表达式时，箭头向右结合。
 
@@ -61,7 +61,7 @@ Lean 中多个箭头会从右向左进行组合，Lean 中绝大多数多参数�
 ``` lean
 universe u
 
-def F (α : Type u) : Type u := Prod α α
+def F (α : Type u) : Type u := Prod α α  -- 一个类型到类型的函数
 
 #check F
 > F.{u} (α : Type u) : Type u
@@ -77,15 +77,17 @@ def F.{u} (α : Type u) : Type u := Prod α α
 
 ## 2.3 Function Abstraction and Evaluation
 
-Lean 提供 fun（或 λ）关键字，用于从表达式创建匿名函数（def 创建有名称的函数）
+Lean 提供 fun（或 λ ）关键字，用于从表达式创建匿名函数（def 创建有名称的函数）
 
-从另一个表达式创建一个函数是一个称为 lambda abstraction 的过程。
+从一个表达式创建中通过 “提取” 变量的方式创建一个函数是一个称为 lambda abstraction 的过程。
 
 ``` lean
 #check fun x : Nat => fun y : Bool => if not y then x + 1 else x + 2
 | fun x y => if (!y) = true then x + 1 else x + 2 : Nat → Bool → Nat
+
 #check fun (x : Nat) (y : Bool) => if not y then x + 1 else x + 2
 | fun x y => if (!y) = true then x + 1 else x + 2 : Nat → Bool → Nat
+
 #check fun x y => if not y then x + 1 else x + 2
 | fun x y => if (!y) = true then x + 1 else x + 2 : Nat → Bool → Nat
 ```
@@ -102,7 +104,9 @@ Lean 中，几乎所有的表达式都像一段小程序，可以被 “执行�
 
 ## 2.4 Definitions
 
-定义的一般形式为 `def foo : α := bar `，α 是从表达式 bar 返回的类型。Lean 通常可推断出 α 的类型，但最好显示写出。右侧 bar 可以是任何表达式，不仅是 lambda。
+def 定义函数的一般形式为 `def <函数名> <参数列表> : <返回类型> := <函数体> ` 。Lean 通常可推断出参数的类型，但最好显示写出。右侧函数体可以是任何表达式，不仅是 lambda。
+
+def 定义常量一般形式: `def <常量名> : <类型> := <值>`
 
 ``` lean
 def double (x : Nat) : Nat :=
@@ -122,7 +126,7 @@ compose 适用于任何类型 α β γ，使得 compose 可以组合几乎任何
 #eval compose Nat Nat Nat double square 3
 ```
 
-可用 {} 将类型参数写成隐式参数，让 Lean 自己推断，使得再调用时不在需要手动指定。
+可用 { } 将类型参数写成隐式参数，让 Lean 自己推断，使得在调用时不在需要手动指定。
 ``` lean
 def compose {α β γ : Type} (g : β → γ) (f : α → β) (x : α) : γ :=
   g (f x)
@@ -156,6 +160,8 @@ def t (x : Nat) : Nat :=
   let y:= x + x
   y * y
 ```
+> Lean 中 `;` 是一个**动作或策略的连接器（sequencer）**，含义是 “**然后（then）**”
+
 注意 `let a := t1; t2` 和 `(fun a => t2) t1` 区别，核心在于信息可见的时间点不同：
 
 - `let a := t1; t2` : 是一个**语法层面的直接替换**。在 Lean 对 `t2` 进行类型检查**之前**，把 `t2` 中所有 `a` 原地替换成 `t1`
@@ -181,7 +187,7 @@ def compose (g : β → γ) (f : α → β) (x : α) : γ :=
   g (f x) 
 ```
 
-可以声明任何类型的变量，而不仅是 Type 本身。variable 命令指示 Lean 讲已声明的变量作为绑定变量插入到通过名称引用他们的定义中。
+可以声明任何类型的变量，而不仅是 Type 本身。variable 命令指示 Lean 将已声明的变量作为绑定变量插入到通过名称引用他们的定义中。
 
 ``` lean
 variable (α β γ : Type)
@@ -228,7 +234,7 @@ open Foo
 > 
 
 
-## 2.8 What makes dependent type theory dependnet ?
+## 2.8 What makes dependent type theory dependent ?
 
 简单的解释是类型可以依赖于参数。
 
@@ -268,24 +274,24 @@ def ident {α : Type u} (x : α) := x
 
 ``` lean
 #check @ident
-@ident : {α : Type u_1} → α → α
+| @ident : {α : Type u_1} → α → α
 ```
-这里的 @ 作用是：临时禁用某个函数的隐式参数机制，将它的所有参数（包括用 `{}` 定义的隐式参数）都变为显示参数。
+这里的 @ 作用是：临时禁用某个函数的隐式参数机制，将它的所有参数（包括用 `{}` 定义的隐式参数）都变为显式参数。
 
 当变量使用 **variable** 命令声明时，也可指定为隐式：
 ``` lean
 universe u
 
 section
-  variable { α : Type u}  -- 声明时指定以后自动把 `α` 当作一个隐式参数
+  variable { α : Type u }  -- 声明时指定以后自动把 `α` 当作一个隐式参数
   variable ( x : α )
   def ident := x
 end
 ```
 
-Lean 拥有复杂的机制去实例化隐式参数，它们可被用来推断函数类型、为此，甚至是证明。在项（term）中实例化这些 “空洞” 或 “占位符” 的过程，常被称为 **阐释（elaboration）**。隐式参数的存在意味着，有时可能没有足够的信息来精确地固定一个表达式的含义。
+Lean 拥有复杂的机制去实例化隐式参数，它们可被用来推断函数类型、甚至是证明。在项（term）中实例化这些 “空洞” 或 “占位符” 的过程，常被称为 **阐释（elaboration）**。隐式参数的存在意味着，有时可能没有足够的信息来精确地固定一个表达式的含义。
 
-List.nil 是多态常量不是函数，一个多态常量是一个单一的、固定的值，但它具体类型可以根据上下文动态变化。
+List.nil 是多态常量不是函数，简写为 `[]`。一个多态常量是一个单一的、固定的值，但它具体类型可以根据上下文动态变化。
 
 在 Lean 中，数字是重载的，但当数字的类型无法推断时，Lean 默认假设它是自然数。
 > 重载：让同一个符号或名字，根据上下文的不同，拥有多种不同的含义和功能。

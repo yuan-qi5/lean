@@ -211,16 +211,92 @@ example (h : p ∨ q) : q ∨ p :=
 
 否定 `¬p`，实际上定义为 `p → False`，所以通过从 `p` 推到出一个矛盾来得到 `¬p` 的证明。
 
+Example : 一个 `(p → q) → ¬q → ¬p` 的证明，归谬法的例子
+``` lean
+variable (p q : Prop)
+
+example (hpq : p → q) (hnq : ¬q) : ¬p :=
+  fun hp : p =>
+    show False from hnq (hpq hp)
+```
+
+联结词 `False` 有一个单一的消除规则 `False.elim`，它表述了 “从一个矛盾中可以得出任何结论” 的事实（即 `False.elim 函数接手一个 `False` 的证明，能产生任何目标的证明）。这条规则有时称为 ex false （是 ex falso sequitur quodlibet 的缩写），或称为爆炸原理（principle of explosion）。
+
+``` lean
+variable (p q : Prop)
+example (hp : p) (hnp : ¬p) : q := False.elim (hnp hp)
+```
+
+从假推导出的任意事实 `q`，在 `False.elim` 中是一个隐式参数，并且会被自动推断。这种模式，即从相互矛盾的假设中推导出一个任意事实，是相当常见的，并由 `absurd` 表示。即 `absurd hp hnp` 就相当于 `False.elim (hnp hp)` 
+
+> 类型 `False` 只有消除规则，`True` 只有引入规则，即 `True.intro : True`，即 `True` 就是 `True`，有一个规范的证明，即 `True.intro`
+>
+> 要证明任意命题，首先应该想到利用矛盾来证明
+
 ### 3.3.4 Logical Equivalence 逻辑等价
 
+`Iff.intro h1 h2` 从 `h1 :  p → q` 和 `h2 : q → p` 产生 `p ↔ q ` 的证明。
 
+`Iff.mp h` 从 `h : p ↔ q` 产生 `p → q` 的证明，`Iff.mpr h` 从 `h : p ↔ q` 产生 `q → p` 的证明。
+
+关于 `↔` 的句法糖：
+  
+  - 构建时：可以用 `⟨h_forward, h_backward⟩` 代替 `Iff.intro ...`
+
+  - 使用时：可以用 `h_iff.mp` 和 `h_iff.mpr` 代替 `Iff.mp h_iff` 和 `Iff.mpr h_iff`
+    
 ## 3.4 Introducing Auxiliary Subgoals
 
+Lean 提供一种帮助构建长证明的工具的方法：即 **have** 结构，它在证明中引入一个辅助子目标。
+
+在内部，表达式 `have h : p := s; t` 产生项 `(fun (h : p) => t) s`。即 s 是 p 的证明，t 是在假设 h : p 的情况下期望结论的证明，并通过 lambda 抽象和应用结合起来。
+
+``` lean
+variable (p q : Prop)
+
+example (h : p ∧ q) : q ∧ p :=
+  have hp : p := h.left
+  have hq : q := h.right
+  show q ∧ p from And.intro hq hp
+```
+
+Lean 还支持一种从目标结构化地反向推理地方法，该方法模拟了数学中的 “足以证明” 的构造。写下 `suffices hq : q from And.intro hq hp` 留下两个目标，首先需要证明确实只需要证明 `q` 就能完成最终证明，接着把目标化为证明 `q`
+
+``` lean
+variable (p q : Prop)
+
+example (h : p ∧ q) : q ∧ p :=
+  have hp : p := h.left
+  suffices hq : q from And.intro hq hp
+  show q from And.right h
+```
 
 
+## 3.5 Classical Logic
 
+引入和消除规则都是构造性的，即他们反映了基于命题 - 类型对应关系的逻辑连接词的计算理解。普通的经典逻辑在此基础上增加了排中律（law of the excluded middle），`p ∨ ¬p`。
 
-## 3.5 Examples if Propositional Validities
+要使用这个原则，需打开 classical namespace
+``` lean
+open Classical
+
+variable (p : Prop)
+
+#check em p
+| em p : p ∨ ¬p
+```
+
+排中律的一个推论是双重否定消除原则（principle of double-negation elimination）：
+
+``` lean
+open Classical
+
+theorem dne {p : Prop} (h : ¬¬p) : p :=
+  Or.elim (em p)
+    (fun hp : p => hp)
+    (fun hnp : ¬p => absurd hnp h)
+```
+## 3.6 Examples if Propositional Validities
 
 
 

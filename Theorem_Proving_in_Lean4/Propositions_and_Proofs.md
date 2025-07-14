@@ -220,7 +220,7 @@ example (hpq : p → q) (hnq : ¬q) : ¬p :=
     show False from hnq (hpq hp)
 ```
 
-联结词 `False` 有一个单一的消除规则 `False.elim`，它表述了 “从一个矛盾中可以得出任何结论” 的事实（即 `False.elim 函数接手一个 `False` 的证明，能产生任何目标的证明）。这条规则有时称为 ex false （是 ex falso sequitur quodlibet 的缩写），或称为爆炸原理（principle of explosion）。
+联结词 `False` 有一个单一的消除规则 `False.elim`，它表述了 “从一个矛盾中可以得出任何结论” 的事实（即 `False.elim 函数接收一个 `False` 的证明，能产生任何目标的证明）。这条规则有时称为 ex false （是 ex falso sequitur quodlibet 的缩写），或称为爆炸原理（principle of explosion）。
 
 ``` lean
 variable (p q : Prop)
@@ -296,6 +296,7 @@ theorem dne {p : Prop} (h : ¬¬p) : p :=
     (fun hp : p => hp)
     (fun hnp : ¬p => absurd hnp h)
 ```
+
 ## 3.6 Examples if Propositional Validities
 
 

@@ -297,9 +297,70 @@ theorem dne {p : Prop} (h : ¬¬p) : p :=
     (fun hnp : ¬p => absurd hnp h)
 ```
 
+`byCases` 和 `byContradiction` 是依赖于排中律，属于经典逻辑的推理策略。
+
+`byCases` 策略实现分类讨论和分情况证明
+
+- 逻辑为：对于任何一个命题，要么是真的，要么是假的，只要能在这两种情况下证明目标成立，目标就一定成立。
+
+- 在 Lean 中对一个命题 `p` 使用 `byCases h : p`时，把当前证明目标分裂为两个子目标
+  - 子目标 1：在增加假设 `h : p` 情况下证明原目标
+  - 子目标 2：在增加驾驶 `h :  ¬p` 情况下证明原目标 
+
+`byContradiction` 策略实现反证法：
+
+- 逻辑为：先假设想证明的目标 `p` 为假（即 `¬p` 成立），若能从此假设推出矛盾（即证明 `False`），说明原假设为真
+
+- 在 Lean 中 对目标 `p` 使用 `byContradiction h` 时，把目标从 `p` 变为 `False`，同时已知条件中会增加一条假设 `h :  ¬p`
+
+``` lean
+open Classical
+variable (p : Prop)
+
+example (h : ¬¬p) : p :=
+  byContradiction  ¬p :
+    (fun h1 : ¬p =>
+      show False from h h1)
+```
+
 ## 3.6 Examples if Propositional Validities
 
+Lean 标准库中包含大量命题逻辑有效语句的证明，可以使用它们来证明自己的命题。以下是一些常见灯饰：
 
+**Commutativity**: 交换律
+  1. p ∧ q ↔ q ∧ p
+  2. p ∨ q ↔ q ∨ p
 
+**Associativity**: 结合律    
+  3. (p ∧ q) ∧ r ↔ p ∧ (q ∧ r)   
+  4. (p ∨ q) ∨ r ↔ p ∨ (q ∨ r)   
+
+**Distributivity**: 分配律       
+  5. p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r)    
+  6. p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r)   
+
+**Other properties**；其他性质    
+  7. (p → (q → r)) ↔ (p ∧ q → r)   
+  8. ((p ∨ q) → r) ↔ (p → r) ∧ (q → r)       
+  9. ¬(p ∨ q) ↔ ¬p ∧ ¬q   
+  10. ¬p ∨ ¬q → ¬(p ∧ q)   
+  11. ¬(p ∧ ¬p)   
+  12. p ∧ ¬q → ¬(p → q)   
+  13. ¬p → (p → q)   
+  14. (¬p ∨ q) → (p → q)   
+  15. p ∨ False ↔ p  
+  16. p ∧ False ↔ False   
+  17. ¬(p ↔ ¬p)   
+  18.(p → q) → (¬q → ¬p)   
  
+下面结论需要经典推理：  
+
+
+**Sorry** 标识能证明任何事物或提供任何数据类型对象。一般用于逐步构建长证明，从上到下开始写证明，使用 **sorry** 去填充子证明。确保 Lean 接受所有 **sorry** 的项；若不接受，需要纠正错误。然后回去替换每个 **sorry** 为实际证明，直到不在有 **sorry** 为止。 
+
+
+
+
+
+
 

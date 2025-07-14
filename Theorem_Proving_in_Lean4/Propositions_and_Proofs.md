@@ -46,7 +46,7 @@ Lean 中可将 Proof p 和 p 本身等同来避免重复编写项 Proof。即每
 variable {p : Prop}
 variable {q : Prop}
 
-theorem t1 : p → q → p := fun hp : p => fun hq : q => hp
+theorem t1 : p → q → p := fun hp : p => fun hq : q => hp hq
 theorem t1 : p → q → p :=
   fun hp : p =>
   fun hq : q =>
@@ -144,10 +144,10 @@ Lean 提供一个有用的语法工具 --- 点表示法（一种语法糖），�
 
 ``` lean
 variable (xs : List Nat)
-# check List.length xs
+#check List.length xs
 | xs.length : Nat
 
-# check xs.length
+#check xs.length
 | xs.length : Nat
 ```
 
@@ -209,7 +209,7 @@ example (h : p ∨ q) : q ∨ p :=
 
 ### 3.3.3 Negation and Falsity 否定和虚假
 
-否定 `¬p`，实际上定义为 `p → False`，所以通过从 `p` 推到出一个矛盾来得到 `¬p` 的证明。
+否定 `¬p`，实际上定义为 `p → False`，所以通过从 `p` 推导出一个矛盾来得到 `¬p` 的证明。
 
 Example : 一个 `(p → q) → ¬q → ¬p` 的证明，归谬法的例子
 ``` lean
@@ -220,7 +220,7 @@ example (hpq : p → q) (hnq : ¬q) : ¬p :=
     show False from hnq (hpq hp)
 ```
 
-联结词 `False` 有一个单一的消除规则 `False.elim`，它表述了 “从一个矛盾中可以得出任何结论” 的事实（即 `False.elim 函数接收一个 `False` 的证明，能产生任何目标的证明）。这条规则有时称为 ex false （是 ex falso sequitur quodlibet 的缩写），或称为爆炸原理（principle of explosion）。
+联结词 `False` 有一个单一的消除规则 `False.elim`，它表述了 “从一个矛盾中可以得出任何结论” 的事实（即 `False.elim` 函数接收一个 `False` 的证明，能产生任何目标的证明）。这条规则有时称为 ex false （是 ex falso sequitur quodlibet 的缩写），或称为爆炸原理（principle of explosion）。
 
 ``` lean
 variable (p q : Prop)
@@ -235,9 +235,13 @@ example (hp : p) (hnp : ¬p) : q := False.elim (hnp hp)
 
 ### 3.3.4 Logical Equivalence 逻辑等价
 
-`Iff.intro h1 h2` 从 `h1 :  p → q` 和 `h2 : q → p` 产生 `p ↔ q ` 的证明。
+`Iff.intro h1 h2` 从 `h1 : p → q` 和 `h2 : q → p` 产生 `p ↔ q ` 的证明。
 
 `Iff.mp h` 从 `h : p ↔ q` 产生 `p → q` 的证明，`Iff.mpr h` 从 `h : p ↔ q` 产生 `q → p` 的证明。
+
+> mp 是 Modus Ponens 缩写，拉丁语，意为 “肯定的方式” 或 “取前式”，常被译为 “假言推理”。
+>
+> mpr 是 Modus Ponens Reverse 意为 “反向的假言推理”。
 
 关于 `↔` 的句法糖：
   
@@ -260,7 +264,7 @@ example (h : p ∧ q) : q ∧ p :=
   show q ∧ p from And.intro hq hp
 ```
 
-Lean 还支持一种从目标结构化地反向推理地方法，该方法模拟了数学中的 “足以证明” 的构造。写下 `suffices hq : q from And.intro hq hp` 留下两个目标，首先需要证明确实只需要证明 `q` 就能完成最终证明，接着把目标化为证明 `q`
+Lean 还支持一种从目标结构化的反向推理的方法，该方法模拟了数学中的 “足以证明” 的构造。写下 `suffices hq : q from And.intro hq hp` 留下两个目标，首先需要证明确实只需要证明 `q` 就能完成最终证明，接着把目标化为证明 `q`
 
 ``` lean
 variable (p q : Prop)
@@ -271,10 +275,20 @@ example (h : p ∧ q) : q ∧ p :=
   show q from And.right h
 ```
 
+`show`, `have`, `suffices` 简单比较：
+
+- `show`: 明确和重申你将要证明的目标，用于提高可读性。
+  - `show <目标类型> from <证明>` 
+
+- `have`: 向前推进，从已知条件推到出一个中间结论，共后续使用
+  - `habe <新假设名> : <类型> := <证明>`
+
+- `suffices`: 向后推理，将当前目标替换为一个更简单的新目标
+  - `suffices <新假设名> : <新命题>` 
 
 ## 3.5 Classical Logic
 
-引入和消除规则都是构造性的，即他们反映了基于命题 - 类型对应关系的逻辑连接词的计算理解。普通的经典逻辑在此基础上增加了排中律（law of the excluded middle），`p ∨ ¬p`。
+引入和消除规则都是构造性的，即他们反映了基于**命题 - 类型**对应关系的逻辑连接词的计算理解。普通的经典逻辑在此基础上增加了排中律（law of the excluded middle），`p ∨ ¬p`。
 
 要使用这个原则，需打开 classical namespace
 ``` lean
@@ -282,7 +296,7 @@ open Classical
 
 variable (p : Prop)
 
-#check em p
+#check em p        -- em 是 Excluded Middle
 | em p : p ∨ ¬p
 ```
 
@@ -306,6 +320,16 @@ theorem dne {p : Prop} (h : ¬¬p) : p :=
 - 在 Lean 中对一个命题 `p` 使用 `byCases h : p`时，把当前证明目标分裂为两个子目标
   - 子目标 1：在增加假设 `h : p` 情况下证明原目标
   - 子目标 2：在增加驾驶 `h :  ¬p` 情况下证明原目标 
+
+``` lean
+open Classical
+variable (p : Prop)
+
+example (h : ¬¬p) : p :=
+  byCases
+    (fun h1 : p => h1)
+    (fun h1 : ¬p => absurd h h1)
+```
 
 `byContradiction` 策略实现反证法：
 

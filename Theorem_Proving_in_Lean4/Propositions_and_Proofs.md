@@ -134,15 +134,84 @@ example (hp : p) (hq : q) : p ∧ q := And.intro hp hq
 
 - `∧` 和 `×` 之间的相似性是柯里-霍华德同构的另一个实例，但与蕴含和函数空间构造器不同，`∧` 和 `×` 在 lean 中被分开处理。
 
-### 3.3.2 
+- Lean 中某些类型**结构**（structures），该类型是通过一个单一的、规范的构造子（single canonical constructor）来定义的。该构造子从一系列合适的参数中构建出该类型的一个元素。
 
+- 在上述情况下，当相关类型是一个归纳类型且可以从上下文推断出来时，Lean 允许使用**匿名构造子（anonymous constructor）** 表示，如 `⟨hp, hq⟩` 来代替 `And.intro hp hq` 
 
+  - 尖括号 `⟨  ⟩` 分别通入 `\<` 和 `\>` 获得。
 
-### 3.3.3
+Lean 提供一个有用的语法工具 --- 点表示法（一种语法糖），允许将一个普通函数调用 `Namespace.function argument`，写成类似面向对象语言中的方法调用 `argument.function`，即 `表达式.函数名` 会被 Lean 翻译为 `类型名.函数名 表达式`。提供了一种无需打开命名空间（namespace）就能访问函数的方法。
 
+``` lean
+variable (xs : List Nat)
+# check List.length xs
+| xs.length : Nat
 
+# check xs.length
+| xs.length : Nat
+```
 
-### 3.3.4
+即根据 `h : p ∧ q` 可将 `And.left h` 写为 `h.left`，将 `And.right` 写为 `h.right`
+
+Lean 允许展平右结合的嵌套构造器，下面两个证明等价：
+```
+variable (p q : Prop)
+
+example (h : p ∧ q) : q ∧ p ∧ q :=
+  ⟨h.right, ⟨h.left, h.right⟩⟩
+
+example (h : p ∧ q) : q ∧ p ∧ q :=
+  ⟨h.right, h.left, h.right⟩
+```
+
+### 3.3.2  Disjunction 析取
+
+**left and right or-introduction rules**：表达式 `Or.intro_left q hp` 从证明 `hp : p` 创建 `p ∨ q` 的证明。类似地，`Or.intro_right p hq` 使用证明 `hq : q` 为 `p ∨ q` 创建证明。 
+> `Or.intro_left 右边的命题（q : Prop）  左边命题的证明（hp : p）`
+>
+> `Or.intro_right 左边的命题 右边命题的证明`
+
+``` lean
+variable (p q : Prop)
+example (hp : p) : p ∨ q := Or.intro_left q hp
+example (hq : q) : p ∨ q := Or.intro_right p hq
+```
+
+**Elimination rules**：通过证明 `r` 能从 `p` 得出并且 `r` 也能从 `q` 得出，从而证明 `r` 可以从 `p ∨ q` 得出。相当于一种**分类讨论**证明。
+
+在表达式 `Or.elim hpq hpr hqr` 中，`Or.elim` 接受三个参数：`hpq : p ∨ q`、`hpr : p → r` 和 `hqr : q → r`，并产生一个 `r` 的证明。
+
+```
+variable (p q r : Prop)
+example (h : p ∨ q) : q ∨ p :=
+  Or.elim h
+    (fun hp : p =>
+        show q ∨ p from Or.intro_right q hp)
+    (fun hq : q =>
+        show q ∨ p from Or.intro_left p hq)
+```
+ 
+大多数情况下，`Or.intro_right` 和 `Or.intro_left` 的第一个参数可以被 Lean 自动推断，所以 Lean 提供了 `Or.inr` 和 `Or.inl` 可视为 `Or.intro_right _` 和 `Or.intro_left _` 的简写，上述证明可写为：
+
+```
+variable (p q r : Prop)
+example (h : p ∨ q) : q ∨ p :=
+  Or.elim h (fun hp => Or.inr hp) (fun hq => Or.inl hq)
+```
+
+`Or` 有两个构造函数，不能使用匿名构造函数表示法。但仍可以写 `h.elim` 而不是 `Or.elim h`:
+
+```
+variable (p q r : Prop)
+example (h : p ∨ q) : q ∨ p :=
+  h.elim (fun hp => Or.inr hp) (fun hq => Or.inl hq)
+```
+
+### 3.3.3 Negation and Falsity 否定和虚假
+
+否定 `¬p`，实际上定义为 `p → False`，所以通过从 `p` 推到出一个矛盾来得到 `¬p` 的证明。
+
+### 3.3.4 Logical Equivalence 逻辑等价
 
 
 ## 3.4 Introducing Auxiliary Subgoals

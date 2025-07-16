@@ -125,14 +125,100 @@ example : f a = g b := congr h₂ h₁
 
 ## 4.3 Calculational Proofs 计算性证明
 
+一个计算性证明是一系列通过基本原理（如等价关系的传递性）组合起来的中间结果链。在 Lean 中，计算性证明以关键词 **calc** 开始，并具有以下语法：
 
+``` lean
+calc
+    <expr>_0 'op_1' <expr_1> ':=' <proof>_1
+    '_'      'op_2' <expr_2> ':=' <proof>_2
+    ...
+    '_'      'op_n' <expr_n> ':=' <proof>_n
+```
+请注意，所有 **calc** 关系都有相同的缩进，每个 <proof>_i 都是一个对 <expr>_{i-1} op_i <expr>_i 的证明。
+
+也可以在第一个关系中使用 _ （紧接在 <expr>_0 之后），这有助于对其关系/证明序列对：
+``` lean
+calc <expr>_0
+    '_' 'op_1' <expr>_1 ':=' <proof>_1
+    '_' 'op_2' <expr>_2 ':=' <proof>_2
+    ...
+    '_' 'op_n' <expr>_n ':=' <proof>_n
+```
+
+这种证明风格在使用 **simp** 和 **rw** 策略时最为有效，这两个策略在下一章讨论。
+
+`calc` 命令可被配置用于任何支持某种形式的传递性的关系。它甚至可以组合不同的关系。可以通过添加 `Trans` 类型类的新实例来 “教” `calc` 新的传递性定理。类型类（Type class）将在后面介绍，
+
+TODO
 
 ## 4.4 The Existential Quantifier 存在量词
+
+存在量词可以写成 `exists x : α , p x` 或 `∃ x : α, p x `。这两个版本实际上都是 Lean 库中定义的更长表达式 `fun x : α => p x` 的的缩写。
+
+引入规则：要证明 `∃ x : α, p x`，只需提供一个合适的项 t 和 p t 的证明即可。
+``` lean
+#check @Exists.intro
+| @Exists.intro : ∀ {α : Sort u_1} {p : α → Prop} (w : α), p w → Exists p
+
+example (x : Nat) (h : x > 0) : ∃ y, y < x :=
+  Exists.intro 0 h
+
+example (x y z : Nat) (hxy : x < y) (hyz : y < z) : ∃ w, x < w ∧ w < z :=
+  Exists.intro y (And.intro hxy hyz)
+```
+
+当类型从上下文中清晰时，可以使用匿名构造器符号 `⟨t, h⟩` 来表示 `Exists.intro t h`
+``` lean
+example (x : Nat) (h : x > 0) : ∃ y, y < x :=
+  ⟨0, h⟩
+
+example (x y z : Nat) (hxy : x < y) (hyz : y < z) : ∃ w, x < w ∧ w < z :=
+  ⟨y, hxy, hyz⟩
+```
+
+![pack_unpack](./pictures/pack_unpack.png)
+
+`|` ：用来分隔不同情况或不同分支的。
+
+注意，`Exist.intro` 含有**隐式参数**（implicit arguments）：Lean 必须在结论 `∃ x, p x` 中推断出**谓词**（predicate）`p : α → Prop`，这并非易事。
+
+例如，如果我们有 `hg : g 0 0 = 0`，然后我们写 `Exists.intro 0 hg`，那么谓词 `p` 会有很多可能的值，分别对应于 `∃ x, g x x = x`、`∃ x, g x x = 0`、`∃ x, g x 0 = x` 等不同的定理。
+
+Lean 会利用**上下文**来推断哪一个是最合适的，下面例子阐释了这一点，该例子中把选项 `pp.explicit` 设置为 `true`，来让 Lean 的 pretty-printer 显示出那些隐式的参数。
+
+可以将 `Exist.intro` 视为一种信息隐藏操作，因为它隐藏了断言主体中的见证。存在消去规则 `Exist.elim` 则执行相反的操作。它允许我们从 `∃ x : α, p x` 出发来证明一个命题 `q`，其方法是：对于一个任意值 `w`，我们证明 `q` 能从 `p w` 推导出来。
+``` lean
+#check Exists.elim
+| Exists.elim.{u} {α : Sort u} {p : α → Prop} {b : Prop} (h₁ : ∃ x, p x) (h₂ : ∀ (a : α), p a → b) : b
+
+variable (α : Type) (p q : α → Prop)
+
+example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x :=
+  Exists.elim h
+    (fun w =>
+     fun hw : p w ∧ q w =>
+     show ∃ x, q x ∧ p x from ⟨w, hw.right, hw.left⟩)
+```
+
+exists-elimination rule 和 or-elimination rule 关系：断言 `∃ x : α, p x` 可以被视为命题 `p a` 的一个大的析取，当 a 遍历 α 的所有元素时。 
 
 
 
 
 ## 4.5 More on the Proof Language 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

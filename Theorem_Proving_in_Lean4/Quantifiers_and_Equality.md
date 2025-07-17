@@ -202,24 +202,117 @@ example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x :=
 
 exists-elimination rule 和 or-elimination rule 关系：断言 `∃ x : α, p x` 可以被视为命题 `p a` 的一个大的析取，当 a 遍历 α 的所有元素时。 
 
+>  Σ (Sigma) 类型：是一种依赖偶对（Dependent Pair）`(x : A) × B x` 第二个元素的类型依赖于第一个值
 
+Σ 类型与存在量词 `∃` 的关系：在 “命题即类型” 的观点下：存在量词 `∃` 是生活在 `Prop` 宇宙中的 Σ 类型。∃ 和 Σ 之间的相似性是 Curry-Howard 同构的另一个实例。
 
+Lean 提供了一种更便捷的方式来消去存在量词，即使用 `match` 表达式：
+``` lean
+variable (a : Type) (p q : a → Prop)
+
+example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x :=
+  match h with
+  | ⟨w, hw⟩ => ⟨w, hw.right, hw.left⟩
+```
+
+`match` 语句将存在性断言 “解构” 为其组件 `w` 和 `hw`，这些组件随后可以在语句的主体部分被用来证明目标命题。为了更清晰，可以在匹配时为变量标注类型：
+``` lean
+example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x :=
+  match h with
+  | ⟨(w : a), (hw : p w ∧ q w)⟩ => ⟨w, hw.right, hw.left⟩
+```
+
+甚至可以使用 `match` 语句来同时分解合取（conjunction）：
+``` lean
+example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x :=
+  match h with
+  | ⟨w, hpw, hqw⟩ => ⟨w, hqw, hpw⟩
+```
+
+Lean 也提供了一个支持模式匹配的 `let` 表达式：
+``` lean
+example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x :=
+  let ⟨w, hpw, hqw⟩ := h
+  ⟨w, hqw, hpw⟩
+```
+
+这本质上只是 `match` 结构的另一种写法 。Lean 甚至允许我们在 `fun` 表达式中使用隐式的 `match`：
+``` lean
+example : (∃ x, p x ∧ q x) → ∃ x, q x ∧ p x :=
+  fun | ⟨w, hpw, hqw⟩ => ⟨w, hqw, hpw⟩
+```
+
+在 Induction and Recursion 中，所有这些变体都是更一般模式匹配构造的实例。
+
+正如构造性的 “或” 比经典的 “或” 更强，构造性的 “存在” 也比经典的 “存在” 更强。例如，以下蕴含式需要经典推理，因为在构造性观点下，直到并非每个 x 都满足 ¬ p 并不等于拥有一个特定 x 满足 p。
+``` lean
+open Classical
+variable (p : α → Prop)
+
+example (h : ¬ ∀ x, ¬ p x) : ∃ x, p x :=
+  byContradiction
+    (fun h1 : ¬ ∃ x, p x =>
+      have h2 : ∀ x, ¬ p x :=
+        fun x =>
+        fun h3 : p x =>
+        have h4 : ∃ x, p x := ⟨x, h3⟩
+        show False from h1 h4
+      show False from h h2)
+```
 
 ## 4.5 More on the Proof Language 
 
+像 `fun`、`have` 和 `show` 这样的关键字，使得编写能够**反映（mirror） 非形式化数学证明结构的形式化证明项**成为可能。
 
+首先，可以使用**匿名的 have 表达式**来引入一个辅助目标，而无需为其命名。可以使用关键字 `this` 来引用最后一次由匿名 `have` 所证明的表达式：
+``` lean
+variable (f : Nat → Nat)
+variable (h : ∀ x : Nat, f x ≤ f (x + 1))
 
+example : f 0 ≤ f 3 :=
+  have : f 0 ≤ f 1 := h 0
+  have : f 0 ≤ f 2 := Nat.le_trans this (h 1)
+  show f 0 ≤ f 3 from Nat.le_trans this (h 2)
+```
 
+通常，证明是从一个事实推导到下一个事实，因此这种方式能有效地消除大量标签（label）带来的混乱。
 
+当目标可以被推断时，可以要求 Lean 通过编写 **by assumption** 来填写证明：
+```
+variable (f : Nat → Nat)
+variable (h : ∀ x : Nat, f x ≤ f (x + 1))
+ 
+example : f 0 ≤ f 3 :=
+  have : f 0 ≤ f 1 := h 0
+  have : f 0 ≤ f 2 := Nat.le_trans (by assumption) (h 1)
+  show f 0 ≤ f 3 from Nat.le_trans (by assumption) (h 2)
+```
 
+这告诉 Lean 使用 **assumption** 策略，该策略会通过在局部上下文中寻找一个合适的假设来证明当前目标。
 
+我们也可以通过编写 `<p>` 来让 Lean 填充证明，其中 `p` 时我们希望 Lean 在上下文中找到其证明的那个命题。可以分别使用 `\f<` 和 `\f>` 来输入这些尖角引号。字母 "f" 代表 "French（法语）"，因为这些 Unicode 符号也可用作法语的引号。实际上该表示法在 Lean 中是如下定义的：
+``` lean
+notation "‹" p "›" => show p by assumption
+```
 
+这种方法比单纯使用 `by assumption` 更为健壮，因为它明确给出了需要被推断的假设的类型，也使得证明更具可读性。
+``` lean
+variable (f : Nat → Nat)
+variable (h : ∀ x : Nat, f x ≤ f (x + 1))
 
+example : f 0 ≥ f 1 → f 1 ≥ f 2 → f 0 = f 2 :=
+  fun _ : f 0 ≥ f 1 =>
+  fun _ : f 1 ≥ f 2 =>
+  have : f 0 ≥ f 2 := Nat.le_trans ‹f 1 ≥ f 2› ‹f 0 ≥ f 1›
+  have : f 0 ≤ f 2 := Nat.le_trans (h 0) (h 1)
+  show f 0 = f 2 from Nat.le_antisymm this ‹f 0 ≥ f 2›
+```
 
+请记住，你可以用这种法式引号的方式来指代上下文中的**任何东西**，而不仅仅是被匿名引入的东西。它的用途也不局限于命题，但用它来指代数据会有点奇怪：
+``` lean
+example (n : Nat) : Nat := ‹Nat›
+```
 
-
-
-
-
+之后会展示如何使用 Lean 的宏系统来扩展证明语言。
 
 

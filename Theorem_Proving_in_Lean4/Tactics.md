@@ -428,6 +428,38 @@ example (p q : Prop) : p ∧ ¬ p → q := by
   contradiction
 ```
 
+也可以在策略块中使用 **match** 或将 **intro** 与 **match** 组合起来。
+``` lean
+example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
+  apply Iff.intro
+  . intro h
+    match h with
+    | ⟨_, Or.inl _⟩ =>
+      apply Or.inl; constructor <;> assumption
+    | ⟨_, Or.inr _⟩ =>
+      apply Or.inr; constructor <;> assumption
+  . intro h
+    match h with
+    | Or.inl ⟨hp, hq⟩ =>
+      constructor; exact hp; apply Or.inl; exact hq
+    | Or.inr ⟨hp, hr⟩ =>
+      constructor; exact hp; apply Or.inr; exact hr
+```
+``` lean
+example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
+  apply Iff.intro
+  . intro
+    | ⟨hp, Or.inl hq⟩ =>
+      apply Or.inl; constructor <;> assumption
+    | ⟨hp, Or.inr hr⟩ =>
+      apply Or.inr; constructor <;> assumption
+  . intro
+    | Or.inl ⟨hp, hq⟩ =>
+      constructor; assumption; apply Or.inl; assumption
+    | Or.inr ⟨hp, hr⟩ =>
+      constructor; assumption; apply Or.inr; assumption
+
+```
 
 ## 5.4 Structuring Tactic Proofs
 

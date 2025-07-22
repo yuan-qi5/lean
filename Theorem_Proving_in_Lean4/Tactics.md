@@ -52,7 +52,7 @@ theorem test (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
     case right => exact hp
 ```
 
-可以使用 **case** 符号在 left 之前解决子目标 right。注意 Lean 将其他目标隐藏在 **case** 块中，即 **case** 会 “聚焦” 于选定的目标。此外，Lean 若在 case 块结束时选定的目标为完全解决，则会报错。
+可以使用 **case** 符号在 left 之前解决子目标 right。注意 Lean 将其他目标隐藏在 **case** 块中，即 **case** 会 “聚焦” 于选定的目标。此外，Lean 若在 case 块结束时选定的目标未完全解决，则会报错。
 
 对于简单的子目标，使用标签去选中有些小题大作，但仍可能希望将其证明结构化。Lean 还提供了 “项目符号”（bullet）表示法 `· <tactics>`（或 `* <tactics>`）来结构化证明。
 ``` lean
@@ -272,7 +272,7 @@ example : 3 = 3 := by
 ```
 
 注意：并非所有的泛化都能保持目标的有效性。下例中 `genelize` 将一个可以用 `rfl` 证明的目标替换成了一个不可证明的目标：
-```
+``` lean
 example : 2 + 3 = 5 := by
   generalize 3 = x
   -- 此处证明状态为:
@@ -282,6 +282,11 @@ example : 2 + 3 = 5 := by
 ```
 
 因为单纯的泛化会丢失信息，上例中丢失了 `3 = x`。为解决这问题，`generalize` 允许提供一个 “标签”，用来保存被替换掉的值和新变量之间的等式关系。
+``` lean
+example : 2 + 3 = 5 := by
+     generalize h : 3 = x
+     rw [← h]
+```
 
 ## 5.3 More Tactics
 
@@ -289,7 +294,7 @@ example : 2 + 3 = 5 := by
 
 ### cases
 
-当应用于一个形如 `` 的目标时，可以使用像 `apply Or.inl` 和 `apply Or.inl` 等策略，反过来，`cases` 策略可用来分解一个析取式：
+当应用于一个形如 `p ∨ q` 的目标时，可以使用像 `apply Or.inl` 和 `apply Or.inl` 等策略，反过来，`cases` 策略可用来分解一个析取式：
 ```lean
 example (p q : Prop) : p ∨ q → q ∨ p := by
   intro h
@@ -482,7 +487,27 @@ example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
     | inr hpr => exact ⟨hpr.left, Or.inr hpr.right⟩
 ```
 
-
+存在 `show` 策略，类似证明项中的 `show` 表达式。它只是声明即将解决的目标的类型，同时保持策略模式。
+```
+example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
+  apply Iff.intro
+  . intro h
+    cases h.right with
+    | inl hq =>
+      show (p ∧ q) ∨ (p ∧ r)
+      exact Or.inl ⟨h.left, hq⟩
+    | inr hr =>
+      show (p ∧ q) ∨ (p ∧ r)
+      exact Or.inr ⟨h.left, hr⟩
+  . intro h
+    cases h with
+    | inl hpq =>
+      show p ∧ (q ∨ r)
+      exact ⟨hpq.left, Or.inl hpq.right⟩
+    | inr hpr =>
+      show p ∧ (q ∨ r)
+      exact ⟨hpr.left, Or.inr hpr.right⟩
+```
 
 `show` 策略实际上可以用来将一个目标重写为定义上等价的事物：
 ``` lean
@@ -491,16 +516,152 @@ example (n : Nat) : n + 1 = Nat.succ n := by
   rfl
 ```
 
-`have` 策略引入一个新的子目标，就像在编写证明项一样，和证明项一样，在 have 策略中可以省略标签，这种情况下使用默认标签 this：
+`have` 策略引入一个新的子目标，就像在编写证明项一样，和证明项一样，
+``` lean
+example (p q r : Prop) : p ∧ (q ∨ r) → (p ∧ q) ∨ (p ∧ r) := by
+  intro ⟨hp, hqr⟩
+  show (p ∧ q) ∨ (p ∧ r)
+  cases hqr with
+  | inl hq =>
+    have hpq : p ∧ q := And.intro hp hq
+    apply Or.inl
+    exact hpq
+  | inr hr =>
+    have hpr : p ∧ r := And.intro hp hr
+    apply Or.inr
+    exact hpr
+```
 
+在 have 策略中可以省略标签，这种情况下使用默认标签 this：
+```
+example (p q r : Prop) : p ∧ (q ∨ r) → (p ∧ q) ∨ (p ∧ r) := by
+  intro ⟨hp, hqr⟩
+  show (p ∧ q) ∨ (p ∧ r)
+  cases hqr with
+  | inl hq =>
+    have : p ∧ q := And.intro hp hq
+    apply Or.inl
+    exact this
+  | inr hr =>
+    have : p ∧ r := And.intro hp hr
+    apply Or.inr
+    exact this
+```
+
+`have` 策略甚至可以省略类型和标签，这种情况下，新的事实用标签 *this* 引入：
+```
+example (p q r : Prop) : p ∧ (q ∨ r) → (p ∧ q) ∨ (p ∧ r) := by
+  intro ⟨hp, hqr⟩
+  cases hqr with
+  | inl hq =>
+    have := And.intro hp hq
+    apply Or.inl; exact this
+  | inr hr =>
+    have := And.intro hp hr
+    apply Or.inr; exact this
+```
+
+`let` 策略类似于 `have` 策略，但用于引入局部定义而不是辅助事实。它是证明项中 `let` 项中 `let` 策略的对应物：
+```
+example : ∃ x, x + 2 = 8 := by
+  let a : Nat := 3 * 2  
+  exists a
+```
+
+和 `have` 一样，可以通过 `let a := 3 * 2` 来隐式地指定类型。
+
+我们使用 `.` 来创建嵌套地策略块。在一个嵌套块中，Lean 会专注于第一个目标，若在块结束时还没有被完全解决，就会生成一个错误。但 `.` 符号对空白敏感，并依赖于缩进来检测策略块是否结束。可以用**花括号**和**分号**来定义策略块：
+``` lean
+example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
+  apply Iff.intro
+  { intro h;
+    cases h.right;
+    { show (p ∧ q) ∨ (p ∧ r);
+      exact Or.inl ⟨h.left, ‹q›⟩ }
+    { show (p ∧ q) ∨ (p ∧ r);
+      exact Or.inr ⟨h.left, ‹r›⟩ } }
+  { intro h;
+    cases h;
+    { show p ∧ (q ∨ r);
+      rename_i hpq;
+      exact ⟨hpq.left, Or.inl hpq.right⟩ }
+    { show p ∧ (q ∨ r);
+      rename_i hpr;
+      exact ⟨hpr.left, Or.inr hpr.right⟩ } }
+```
+
+使用缩进来组织证明是有用的：每当一个策略留下多个子目标时，通过将它们括在块中并缩进来分隔剩余的子目标。因此，若将定理 `foo` 应用于单个目标并产生了四个子目标，那么证明原告看起来类似这样：
+```
+apply foo
+  . <proof of first goal>
+  . <proof of second goal>
+  . <proof of third goal>
+  . <proof of final goal>
+```
+或
+```
+apply foo
+  case <tag of first goal>  => <proof of first goal>
+  case <tag of second goal> => <proof of second goal>
+  case <tag of third goal>  => <proof of third goal>
+  case <tag of final goal>  => <proof of final goal>
+```
+或
+```
+ apply foo
+  { <proof of first goal>  }
+  { <proof of second goal> }
+  { <proof of third goal>  }
+  { <proof of final goal>  }
+```
 
 
 ## 5.5 Tactic Combinators
 
+Tactic combinators（策略组合子）是用于从旧策略中形成新策略的操作。顺序组合子（sequence combinator）已经在 `by` 块中隐含：
+```
+example (p q : Prop) (hp : p) : p ∨ q :=
+  by apply Or.inl; assumption
+```
 
+在 `t1 <;> t2` 中，`<;>` 提供了顺序操作的并行版本：t1 应用于当前目标，然后 t2 应用于所有结果子目标。当最终目标能够以统一的方式完成时很有用。
+``` example
+example (p q : Prop) (hp : p) (hq : q) : p ∧ q :=
+  by constructor <;> assumption
+```
 
+`first | t1 | t2 | ... | tn` 对每个 `ti` 进行应用，知道其中一个成功，否则失败。
+```
+example (p q : Prop) (hp : p) : p ∨ q := by
+  first | apply Or.inl; assumption | apply Or.inr; assumption
 
+example (p q : Prop) (hq : q) : p ∨ q := by
+  first | apply Or.inl; assumption | apply Or.inr; assumption
+```
 
+策略（tactics）可能会失败，而 `try` 组合子则构建一个永远会成功的策略，尽管其成功可能是无意义的（in a trivial）。`try t` 会执行策略 `t`，并且即使 `t` 失败了也会报告成功，这等价于 `first | t | skip`，其中 `skip` 是一个什么都不做（但总会成功）的策略。
+```
+example (p q r : Prop) (hp : p) (hq : q) (hr : r) : p ∧ q ∧ r := by
+  constructor <;> (try constructor) <;> assumption
+```
+
+请注意：`repeat (try t)` 会无限循环，因为其内部的策略永远不会失败。
+
+在一个证明中，通常有多个未解决的问题。并行排序是其中一种方法，通过这种方法可以将单个策略应用多个问题，但还有其他方法可以实现。例如，`all_goals t` 将 `t` 应用于所有打开的问题：
+```
+example (p q r : Prop) (hp : p) (hq : q) (hr : r) : p ∧ q ∧ r := by
+  constructor
+  all_goals (try constructor)
+  all_goals assumption
+```
+
+但更推荐 `any_goals`，它与 `all_goals` 类似，但它会在其参数至少一个问题上成功时成功。
+```
+example (p q r : Prop) (hp : p) (hq : q) (hr : r) : p ∧ q ∧ r := by
+  constructor
+  any_goals constructor
+  any_goals assumption
+```
 
 ## 5.6 Rewriting
 
@@ -585,15 +746,195 @@ by
 
 > List.reverse 是 Lean 核心库中定义在列表 (List) 上的一个函数。它的作用非常直接：将一个列表的元素顺序完全颠倒。
 
+和 `rw` 一样，可使用 `at` 来指定简化假设：
+``` lean
+example (x y z : Nat) (p : Nat → Prop)
+        (h : p ((x + 0) * (0 + y * 1 + z * 0))) : p (x * y) := by
+  simp at h; assumption
+```
 
+可以使用通配符星号 `*` 来简化所有假设和目标：
+``` lean
+attribute [local simp] Nat.mul_comm Nat.mul_assoc Nat.mul_left_comm
+attribute [local simp] Nat.add_assoc Nat.add_comm Nat.add_left_comm
+
+example (w x y z : Nat) (p : Nat → Prop)
+        (h : p (x * y + z * w * x)) : p (x * w * z + y * x) := by
+  simp at *; assumption
+
+example (x y z : Nat) (p : Nat → Prop)
+        (h₁ : p (1 * x + y)) (h₂ : p (x * z * 1))
+        : p (y + 0 + x) ∧ p (z * x) := by
+  simp at * <;> constructor <;> assumption
+```
+
+`local` 修饰符告诉简化在当前文件（或视情况而定的命名空间）中使用这些规则。重复应用交换律和左交换律似乎会引发循环问题，但简化器能检测到那些仅仅时置换器参数的恒等式，并使用一种称为 **有序重写（ordered rewriting）** 的技术。这意味着系统维护着一个内部的项（term）的顺序。
+
+对上述三个恒等式，其效果时表达式中所有括号都会以一种标准方式关联，并且表达式中的项会以一种规范的方式顺序排列。
+
+与 `rw` 一样，你可以给 `simp` 提供一个要使用的事实列表，包括通用的引理、局部的假设、需要展开的定义以及复合表达式。`simp` 策略也能识别 `rewrite` 所使用的 `←t` 语法。这些额外的规则都会被添加到用于简化表达式的恒等式集合中。
+``` lean
+def f (m n : Nat) : Nat :=
+  m + n + m
+
+example {m n : Nat} (h : n = 1) (h' : 0 = m) : (f m n) = n := by
+  simp [h, ←h', f]
+```
+
+在简化时使用本地环境中所有现有的假设，可以使用通配符 `*`：
+```
+variable (k : Nat) (f : Nat → Nat)
+
+example (h₁ : f 0 = 0) (h₂ : k = 0) : f k = 0 := by
+  simp [*]
+```
+
+simplifier 也会进行**命题重写**。例如，使用假设 p ，它将 p ∧ q 重写为 q 并将 p ∨ q 重写为 True ，然后它轻易地证明了这些。迭代这样的重写会产生非平凡的命题推理。
+``` lean
+example (p q : Prop) (hp : p) : p ∧ q ↔ q := by
+  simp [*]
+
+example (p q : Prop) (hp : p) : p ∨ q := by
+  simp [*]
+
+example (p q r : Prop) (hp : p) (hq : q) : p ∧ (q ∨ r) := by
+  simp [*]
+```
+
+下一个例子简化了所有假设，然后使用它们来证明目标：
+``` lean
+example (u w x x' y y' z : Nat) (p : Nat → Prop)
+        (h₁ : x + 0 = x') (h₂ : y + 0 = y')
+        : x + y + 0 = x' + y' := by
+  simp at *
+  simp [*]
+```
+
+让 `simplifier` 特别有用的一点是，随着库的发展，功能可以不断扩展。例如，假设定义了一个列表操作，通过追加其反转来对称化其输入：
+``` lean
+def mk_symm (xs : List α) :=
+  xs ++ xs.reverse
+```
+
+然后对于任何列表 xs，(mk_symm xs).reverse 等于 mk_symm xs，这可通过展开定义证明：
+``` lean
+theorem reverse_mk_symm (xs : List α)
+        : (mk_symm xs).reverse = mk_symm xs := by
+  simp [mk_symm]
+```
+
+然后可以使用这个定理去证明新的结果，如果这个定理是对的，我们希望不必显示地调用。可以通过在定理定义时，将其标记为简化规则来实现这一点：
+``` lean
+@[simp] theorem reverse_mk_symm (xs : List α)
+        : (mk_symm xs).reverse = mk_symm xs := by
+  simp [mk_symm]
+
+example (xs ys : List Nat)
+        : (xs ++ mk_symm ys).reverse = mk_symm ys ++ xs.reverse := by
+  simp
+```
+
+符号 `@[simp]` 声明 `reverse_mk_symm` 具有属性 `[simp]`，并且可以更明确的表示。
+``` lean
+theorem reverse_mk_symm (xs : List α)
+        : (mk_symm xs).reverse = mk_symm xs := by
+     simp [mk_symm]
+
+attribute [simp] reverse_mk_symm
+
+example (xs ys : List Nat)
+: (xs ++ mk_symm ys).reverse = mk_symm ys ++ xs.reverse := by
+     simp
+```
+
+然而，一旦应用了属性，就再也无法永久移除了；它将已知存在于任何导入分配了该属性的文件中。但可以使用 `local` 修饰符将属性的作用范围限制在当前文件或命名空间中。
+``` lean
+theorem reverse_mk_symm (xs : List α)
+        : (mk_symm xs).reverse = mk_symm xs := by
+  simp [mk_symm]
+
+section
+attribute [local simp] reverse_mk_symm
+
+example (xs ys : List Nat)
+        : (xs ++ mk_symm ys).reverse = mk_symm ys ++ xs.reverse := by
+  simp
+
+end
+```
+
+在 section 外，简化器将不再默认使用 `reverse_mk_symm`
+
+`simp` 策略有许多配置选项。例如，可以按如下方式启用上下文简化：
+```
+example : if x = 0 then y + x =y else x ≠ 0 := by 
+     sim +contextual
+```
+
+另一个有用的配置选项时 `+arith`，它启用算术简化：
+```
+example : 0 < 1 + x ∧ x + y + 2 ≥ y + 1 := by
+     simp +arith
+```
 
 ## 5.8 Split Tactic
 
+`split` 策略在分解嵌套 `if-then-else` 和 `match` 表达式时很有用。对于具有 match 个分支的 n 表达式，split 策略最多生成 n 个子目标。
+```
+def f (x y z : Nat) : Nat :=
+  match x, y, z with
+  | 5, _, _ => y
+  | _, 5, _ => y
+  | _, _, 5 => y
+  | _, _, _ => 1
 
+example (x y z : Nat) : x ≠ 5 → y ≠ 5 → z ≠ 5 → z = w → f x y w = 1 := by
+  intros
+  simp [f]
+  split
+  . contradiction
+  . contradiction
+  . contradiction
+  . rfl
+```
 
+可以将上述策略压缩如下：
+```
+example (x y z : Nat) :
+  x ≠ 5 → y ≠ 5 → z ≠ 5 → z = w →
+  f x y w = 1 := by
+  intros; simp [f]; split <;> first | contradiction | rfl
 
+```
 
 ## 5.9 Extensible Tactics
+
+以 `triv` 为例如何定义策略：
+
+- 可使用 `syntax` 声明符号 `triv` 为策略。然后，使用命令
+
+- `macro_rules` 指定当使用 `triv` 时应执行的操作。可以提供不同的扩展，策略解释器会尝试所有扩展直到一个成功。
+``` lean
+macro_rules
+  | `(tactic| 你的策略名) => `(tactic| 实现该功能的现有策略)
+```
+
+- 扩展现有策略的功能，即增加更多的 `macro_rules`。Lean 会将这些规则视为一个 “备选方案列表”。
+
+**工作机制（回溯 Backtracking）**：
+当 Lean 执行策略时：
+
+1. 按定义顺序尝试第一条 `macro_rules`
+2. 如果该规则展开后的策略执行成功，则整个策略成功
+3. 如果该规则展开后的策略执行失败，Lean 不会报错，而是会**自动回溯**，并尝试列表中的下一条 `macro_rules`
+4. 这个过程会持续进行，直到有一条规则成功，或者所有规则都产生过hi失败（此时整个策略才算失败）
+
+
+
+
+
+
+
 
 
 

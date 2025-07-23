@@ -82,9 +82,105 @@ example (a b : Point) : add a b = add b a := by simp [add, add_comm]
 >
 > `protected` 是一个关键字，用于**限制对某个名称的访问**，使其名称不会被自动加入到根命名空间中。核心作用为：一个被标记为 `proteted` 的定义，只有在**打开其所在的命名空间**或者**使用完整的名称**时才能被访问。
 >
+> 在一个定义上加上 `@[simp]`，使用 `simp` 策略就会自动简化它。
+>
 > 在 Mathlib 中，乘法对加法的分配律区分**左分配律**和**右分配律**
 
 ![mul_add](./pictures/mul_add.png)
+
+目前还没有方法将 `Point.add` 与泛型的 `+` 符号联系起来，抑或是将 `Point.add_comm`、`Point.add_assoc` 与泛型 `add+comm`、`add_assoc` 定理联系起来。这些属于结构体在代数层面的应用，下一节介绍如何具体实现，现在只需把结构体视为一种**捆绑对象和信息**的方法。
+
+在结构体中除了可以指定**数据类型**，还可以指定数据需要**满足的约束**。在 Lean 中，后者被表示为**类型 `Prop` 的字段**。例如，标准 2-单纯性（standard 2-simplex）定义为满足 $x \geq 0, y \geq 0, z \geq 0, x+y+z=1$
+``` lean
+structure StandardTwoSimplex where
+  x : ℝ
+  y : ℝ
+  z : ℝ
+  x_nonneg : 0 ≤ x   
+  y_nonneg : 0 ≤ y
+  z_nonneg : 0 ≤ z
+  sum_eq : x + y + z = 1
+```
+我们可以定义一个从 2-单纯性到其自身的映射，该映射交换 `x` 和 `y`：
+``` lean
+def swapXy (a : StandardTwoSimplex) : StandardTwoSimplex
+    where
+  x := a.y
+  y := a.x
+  z := a.z
+  x_nonneg := a.y_nonneg   ---- 必须证明结构体满足性质
+  y_nonneg := a.x_nonneg
+  z_nonneg := a.z_nonneg
+  sum_eq := by rw [add_comm a.y a.x, a.sum_eq]
+```
+
+先对 `noncomputable` 的简要介绍：
+
+`noncomputable` 告诉 Lean，这个定义是纯粹**理论性**的，用于逻辑推理和证明。清补要尝试为它生成可执行代码，直接在逻辑上接受它即可。
+  - 用途：当定义了一个依赖不可计算操作的函数或指，必须要用 `noncomputable` 关键字来标记它
+> 可计算（Computable）: 一个定义是 “可计算的”，意味着 Lean 可以将其编译称一个具体的、可执行的算法
+>
+> 不可计算（Non-Computable）：一个定义是 “不可计算的”，意味着它依赖于**非构造性**的数学公理（如选择公理、排中律），这些公理断言了某事物的 “存在性”，但没有提供以一个通用的 “构造方法” 或算法。
+
+``` lean
+noncomputable section
+
+def midpoint (a b : StandardTwoSimplex) : StandardTwoSimplex
+    where
+  x := (a.x + b.x) / 2
+  y := (a.y + b.y) / 2
+  z := (a.z + b.z) / 2
+  x_nonneg := div_nonneg (add_nonneg a.x_nonneg b.x_nonneg) (by norm_num)
+  y_nonneg := div_nonneg (add_nonneg a.y_nonneg b.y_nonneg) (by norm_num)
+  z_nonneg := div_nonneg (add_nonneg a.z_nonneg b.z_nonneg) (by norm_num)
+  sum_eq := by field_simp; linarith [a.sum_eq, b.sum_eq]
+```
+> `div_nonneg` 是一个定理，用来证明**两个非负数相除的结果也是非负的**
+>
+> `add_nonneg` 是一个定理，用来证明**两个非负数相加的结果仍然是非负的**
+>
+> `add_assoc` 是一个定理，用来证明**加法交换律**
+> 
+> `field_simp` 是一个策略，专门用于**化简包含分数（除法）的表达式**。主要工作是通分、约分以及将表达式整理成一个单一的最简分式。
+>
+> 注意，`field_simp` 需要确保分母不为零，因此它可能会产生形如 `b ≠ 0` 的新子目标，可通过提供确保相应假设来解决这些子目标，如 `field_simp [hb]`
+>
+> `by norm_num` 是一个策略，是 "Noemalize Numbers" 的缩写，它是 Lean 内置的超级计算机，用于计算和证明关于具体数字（没有变量）的表达式。不仅能得出结果，还能完成对计算结果的证明。
+> 
+> `linarith` 是 "Linear Arithmetic" 的缩写，是一个策略，专门用于自动**证明线性不等式**。它能处理的目标和假设只包含变量的加、减、以及和常数的乘法，但不能有变量与变量相乘。它可以直接推导出目标，或者找到矛盾进而证明任何结论。
+>
+> Lean 证明还没有那么智能，有时不能由策略直接证明，可先写出要证明的目标，再应用策略去证明
+
+结构体还可以依赖于参数。例如，可以将标准 2- 单纯形推广到任意维数 n 下的 n- 单纯形。目前只需知道 `Fin n` 有 n 个元素，并且 Lean 知道如何在其上进行求和操作
+
+`Fin` 是 `finite` 缩写，`Fin n` 类型代表一个包含 `n` 个元素的**有限**集合。一个 `Fin n` 类型的值，内部包含两个部分，分别是**一个数值**和**一个证明**
+
+```
+open BigOperators
+
+structure StandardSimplex (n : ℕ) where
+  V : Fin n → ℝ
+  NonNeg : ∀ i : Fin n, 0 ≤ V i
+  sum_eq_one : (∑ i, V i) = 1
+
+namespace StandardSimplex
+
+def midpoint (n : ℕ) (a b : StandardSimplex n) : StandardSimplex n
+    where
+  V i := (a.V i + b.V i) / 2
+  NonNeg := by
+    intro i
+    apply div_nonneg
+    · linarith [a.NonNeg i, b.NonNeg i]
+    norm_num
+  sum_eq_one := by
+    simp [div_eq_mul_inv, ← Finset.sum_mul, Finset.sum_add_distrib,
+      a.sum_eq_one, b.sum_eq_one]
+    field_simp
+
+end StandardSimplex
+```
+> `open BigOperators`：打开一个名为 `BigOperators` 的命名空间，使得能直接使用**求和 (∑)(\sum)、求积 (∏)(\prod) 等大型数学运算符的符号和相关定理**。
 
 ## 7.2 代数结构
 
